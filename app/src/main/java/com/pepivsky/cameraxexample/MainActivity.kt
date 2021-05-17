@@ -2,6 +2,7 @@ package com.pepivsky.cameraxexample
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -9,12 +10,15 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -62,7 +66,37 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
-    private fun takePhoto() {}
+    //funcion para tomar la foto
+    private fun takePhoto() {
+        // Get a stable reference of the modifiable image capture use case
+        val imageCapture = imageCapture ?: return // objeto de caso de uso de captura, si es nulo sale de la funcion
+
+        // Create un archivo de salida con marca de tiempo (TimeStamp) en el nombre para guardar la foto y que el nombre sea unico
+        val photoFile = File(
+            outputDirectory,
+            SimpleDateFormat(FILENAME_FORMAT, Locale.US
+            ).format(System.currentTimeMillis()) + ".jpg") //establece el formato de salida
+
+        // Crea un objeto de opciones de salida a partir del archivo que recibe, en este objeto se pueden especificar mas opciones de salida
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build() // le pasamos el archivo en el que sera guardada la salida
+
+        // Set up image capture listener, which is triggered after photo has been taken
+        imageCapture.takePicture( //toma la foto, este metodo recibe las opciones de salida, un ejecutor y un callback que se llama cuando la imagen ha sido guardada
+            outputOptions, ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageSavedCallback {
+                override fun onError(exc: ImageCaptureException) { // Callback se se llama cuando un error ocurre
+                    Toast.makeText(baseContext, "Ha ocurrido un error :(", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                }
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) { //CallBack despues que la imagen es guardada
+                    val savedUri = Uri.fromFile(photoFile) //obtiene el uri a partir del archivo recibido
+                    val msg = "Photo capture succeeded: $savedUri"
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, msg)
+                }
+            })
+
+    }
 
     //funcion para tomar la foto
     private fun startCamera() { // aqui se configura el caso de uso de preview
@@ -78,6 +112,9 @@ class MainActivity : AppCompatActivity() {
                 .also {
                     it.setSurfaceProvider(viewFinder.surfaceProvider)
                 }
+            //configurando el objeto de captura (caso de uso)
+            imageCapture = ImageCapture.Builder()
+                .build()
 
             // Select back camera as a default
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -87,8 +124,8 @@ class MainActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera (la instancia resultante se vincula al ciclo de vida)
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview) //se le pasa el selecto y el preview
+                // Este objeto recibe los casos de uso y los vincula
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture) //se le pasa el selector, el preview y el imageCapture
 
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
@@ -124,11 +161,7 @@ class MainActivity : AppCompatActivity() {
             if (allPermissionsGranted()) { // si todos los permisos se han concedido entonces inicia la camara
                 startCamera()
             } else { // si lo permisos son rechazados lanza un toast
-                Toast.makeText(
-                    this,
-                    "Permissions not granted by the user.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show()
                 finish()
             }
         }
