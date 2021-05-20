@@ -1,7 +1,11 @@
 package com.pepivsky.cameraxexample
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -16,6 +20,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.labters.documentscanner.ImageCropActivity
+import com.labters.documentscanner.helpers.ScannerConstants
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -93,9 +99,39 @@ class MainActivity : AppCompatActivity() {
                     val msg = "Photo capture succeeded: $savedUri"
                     Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
                     Log.d(TAG, msg)
+
+                // start image cropper
+                    var selectedImage = savedUri //creando bitmap a partir del uri
+                    var btimap: Bitmap? = null
+                    try {
+                        val inputStream = selectedImage?.let { contentResolver.openInputStream(it) }
+                        btimap = BitmapFactory.decodeStream(inputStream)
+                        ScannerConstants.selectedImageBitmap = btimap
+                        // se lanza el intent para pasar al activity crop
+                        startActivityForResult(
+                            Intent(this@MainActivity, ImageCropActivity::class.java),
+                            1234
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             })
 
+    }
+
+    // se recupera la imagen
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // recuperando la imagen recortada
+        if (requestCode== 1234 && resultCode== Activity.RESULT_OK )
+        {
+            if (ScannerConstants.selectedImageBitmap!=null)
+                //imgBitmap.setImageBitmap(ScannerConstants.selectedImageBitmap)
+                    Log.d(TAG, "imagen recuperada ${ScannerConstants.selectedImageBitmap}")
+            else
+                Toast.makeText(MainActivity@this,"Something wen't wrong.",Toast.LENGTH_LONG).show()
+        }
     }
 
     //funcion para tomar la foto
