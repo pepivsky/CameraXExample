@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -45,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: ExecutorService
 
     //views en el layout
-    lateinit var camera_capture_button: Button //boton
+    lateinit var camera_capture_button: ImageButton //boton
     lateinit var viewFinder: PreviewView // previewView
 
     override fun onCreate(savedInstanceState: Bundle?) {
