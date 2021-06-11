@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -21,6 +22,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.material.snackbar.Snackbar
 import com.labters.documentscanner.ImageCropActivity
 import com.labters.documentscanner.helpers.ScannerConstants
 import java.io.File
@@ -48,6 +50,10 @@ class MainActivity : AppCompatActivity() {
     //views en el layout
     lateinit var camera_capture_button: ImageButton //boton
     lateinit var viewFinder: PreviewView // previewView
+    lateinit var tvLadoActual: TextView
+
+    //lista con el frontal y el reverso del documento
+    val bitMapList = mutableListOf<Bitmap>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +62,7 @@ class MainActivity : AppCompatActivity() {
         //findById
         camera_capture_button = findViewById(R.id.camera_capture_button)
         viewFinder  = findViewById(R.id.viewFinder)
+        tvLadoActual = findViewById(R.id.tvLadoActual)
 
         // Request camera permissions
         if (allPermissionsGranted()) { // reivisa si los permisos se han concedido, sino los solicita
@@ -108,6 +115,16 @@ class MainActivity : AppCompatActivity() {
                         val inputStream = selectedImage?.let { contentResolver.openInputStream(it) }
                         btimap = BitmapFactory.decodeStream(inputStream)
                         ScannerConstants.selectedImageBitmap = btimap
+
+                        // custom layout
+                        ScannerConstants.cropText = "Aceptar"
+                        ScannerConstants.backText = "Repetir"
+                        ScannerConstants.imageError = "No se pudo obtener la imagen"
+                        ScannerConstants.cropError = "You have not selected a valid field. Please make corrections until the lines are blue."
+                        ScannerConstants.cropColor = "#15DA7B"
+                        ScannerConstants.backColor = "#EFA842"
+                        ScannerConstants.progressColor = "#EFA842"
+
                         // se lanza el intent para pasar al activity crop
                         startActivityForResult(
                             Intent(this@MainActivity, ImageCropActivity::class.java),
@@ -127,11 +144,24 @@ class MainActivity : AppCompatActivity() {
         // recuperando la imagen recortada
         if (requestCode== 1234 && resultCode== Activity.RESULT_OK )
         {
-            if (ScannerConstants.selectedImageBitmap!=null)
+            if (ScannerConstants.selectedImageBitmap!=null) {
                 //imgBitmap.setImageBitmap(ScannerConstants.selectedImageBitmap)
-                    Log.d(TAG, "imagen recuperada ${ScannerConstants.selectedImageBitmap}")
-            else
-                Toast.makeText(MainActivity@this,"Something wen't wrong.",Toast.LENGTH_LONG).show()
+                Log.d(TAG, "imagen recuperada ${ScannerConstants.selectedImageBitmap}")
+                val bitmap = ScannerConstants.selectedImageBitmap
+                if (!bitMapList.contains(bitmap)) {
+                    bitMapList.add(bitmap)
+                }
+                Log.d(TAG, "size:${bitMapList.size} ${bitMapList.joinToString()}")
+                /*if (bitMapList.size == 2) {
+                    Snackbar.make(camera_capture_button, "Frente y reverso guardados", Snackbar.LENGTH_SHORT).show()
+                }*/
+
+                Log.d(TAG, "size:${bitMapList.size} ${bitMapList.joinToString()}")
+
+            } else {
+                Toast.makeText(this@MainActivity,"Something wen't wrong.",Toast.LENGTH_LONG).show()
+            }
+
         }
     }
 
@@ -201,6 +231,17 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show()
                 finish()
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (bitMapList.size == 1) { tvLadoActual.text = "Lado Trasero" }
+        if (bitMapList.size == 2) {
+            val intent = Intent(this@MainActivity, SecondActivity::class.java)
+            val bundle = Bundle()
+
+            startActivity(intent)
         }
     }
 
